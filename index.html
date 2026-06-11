@@ -9,7 +9,7 @@
   <script>
     /* Variables del joystick accesibles desde el componente */
     var JOY_R    = 37;
-    var SPEED    = 0.1;
+    var SPEED    = 0.055;
     var joyActive = false;
     var joyDx = 0, joyDy = 0;
 
@@ -24,17 +24,23 @@
         var camEl = this.el.querySelector('[camera]');
         if (!camEl) return;
 
-        var fwd = new THREE.Vector3();
-        camEl.object3D.getWorldDirection(fwd);
-        fwd.y = 0;
-        if (fwd.lengthSq() < 0.001) return;
-        fwd.normalize();
+        /* Ángulo Y de la cámara en world space */
+        var euler = new THREE.Euler();
+        euler.setFromQuaternion(camEl.object3D.getWorldQuaternion(new THREE.Quaternion()), 'YXZ');
+        var angle = euler.y;
 
-        var right = new THREE.Vector3();
-        right.crossVectors(new THREE.Vector3(0,1,0), fwd).normalize();
+        /* Vectores de movimiento calculados desde el ángulo, sin producto vectorial */
+        /* Joystick arriba (ny<0) → avanzar; joystick derecha (nx>0) → ir a la derecha */
+        var sinA = Math.sin(angle);
+        var cosA = Math.cos(angle);
 
-        this.el.object3D.position.addScaledVector(fwd,    ny * SPEED);
-        this.el.object3D.position.addScaledVector(right, -nx * SPEED);
+        var pos = this.el.object3D.position;
+        /* adelante/atrás */
+        pos.x += sinA * (-ny) * SPEED;
+        pos.z += cosA * (-ny) * SPEED;
+        /* derecha/izquierda */
+        pos.x += cosA * nx * SPEED;
+        pos.z += (-sinA) * nx * SPEED;
       }
     });
   </script>
@@ -322,3 +328,4 @@
 
 </body>
 </html>
+
