@@ -252,8 +252,8 @@
       var p = joyPos(e.touches[0]);
       var d = Math.sqrt(p.x*p.x + p.y*p.y);
       var c = d > JOY_R ? JOY_R / d : 1;
-      joyDx = p.x * c;
-      joyDy = p.y * c;
+      joyDx =  p.x * c;
+      joyDy = -p.y * c;
       document.getElementById('debug').innerHTML =
         'nx: '+(joyDx/JOY_R).toFixed(2)+'<br>ny: '+(joyDy/JOY_R).toFixed(2);
       joyThumb.style.transform =
