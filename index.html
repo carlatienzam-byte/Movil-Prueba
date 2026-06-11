@@ -34,7 +34,7 @@
         right.crossVectors(new THREE.Vector3(0,1,0), fwd).normalize();
 
         this.el.object3D.position.addScaledVector(fwd,  -ny * SPEED);
-        this.el.object3D.position.addScaledVector(right,  nx * SPEED);
+        this.el.object3D.position.addScaledVector(right, -nx * SPEED);
       }
     });
   </script>
@@ -309,4 +309,4 @@
   </script>
 
 </body>
-</html>
+</html>>
