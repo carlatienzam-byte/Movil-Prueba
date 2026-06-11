@@ -1,386 +1,312 @@
 <!Doctype html>
 <html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-event-set-component@5.x.x/dist/aframe-event-set-component.min.js"></script>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <script src="https://unpkg.com/aframe-event-set-component@5.x.x/dist/aframe-event-set-component.min.js"></script>
 
-    <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { overflow: hidden; }
+  <!-- ══ COMPONENTES A-FRAME — DEBEN IR ANTES DE <a-scene> ══ -->
+  <script>
+    /* Variables del joystick accesibles desde el componente */
+    var JOY_R    = 37;
+    var SPEED    = 0.055;
+    var joyActive = false;
+    var joyDx = 0, joyDy = 0;
 
-      /* â”€â”€ Joystick â”€â”€ */
-      #joystick-zone {
-        position: fixed;
-        bottom: 28px; left: 20px;
-        width: 120px; height: 120px;
-        z-index: 100;
-        touch-action: none;
-      }
-      .joy-base {
-        width: 120px; height: 120px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.12);
-        border: 2px solid rgba(255,255,255,0.35);
-        position: relative;
-      }
-      .joy-thumb {
-        width: 46px; height: 46px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.5);
-        border: 2px solid rgba(255,255,255,0.85);
-        position: absolute;
-        top: 50%; left: 50%;
-        transform: translate(-50%,-50%);
-        pointer-events: none;
-      }
+    /* Movimiento — se registra aquí para que A-Frame lo encuentre al parsear el HTML */
+    AFRAME.registerComponent('mobile-movement', {
+      tick: function () {
+        if (!joyActive) return;
+        var nx = joyDx / JOY_R;
+        var ny = joyDy / JOY_R;
+        if (Math.abs(nx) < 0.05 && Math.abs(ny) < 0.05) return;
 
-      /* â”€â”€ BotÃ³n interactuar â”€â”€ */
-      #btn-interact {
-        position: fixed;
-        bottom: 28px; right: 20px;
-        width: 74px; height: 74px;
-        border-radius: 50%;
-        background: rgba(178,143,80,0.28);
-        border: 2px solid rgba(178,143,80,0.85);
-        color: #fff;
-        font-family: sans-serif;
-        font-size: 11px;
-        font-weight: bold;
-        display: flex; align-items: center; justify-content: center;
-        z-index: 100;
-        cursor: pointer;
-        touch-action: manipulation;
-        user-select: none;
-        transition: background 0.1s;
-        text-align: center;
-        line-height: 1.3;
-      }
-      #btn-interact:active { background: rgba(178,143,80,0.6); }
+        var camEl = this.el.querySelector('[camera]');
+        if (!camEl) return;
 
-      /* â”€â”€ Crosshair â”€â”€ */
-      #crosshair {
-        position: fixed;
-        top: 50%; left: 50%;
-        transform: translate(-50%,-50%);
-        pointer-events: none;
-        z-index: 99;
-      }
+        var fwd = new THREE.Vector3();
+        camEl.object3D.getWorldDirection(fwd);
+        fwd.y = 0;
+        if (fwd.lengthSq() < 0.001) return;
+        fwd.normalize();
 
-      /* â”€â”€ Toast â”€â”€ */
-      #toast {
-        position: fixed;
-        bottom: 165px; left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,0.65);
-        color: #fff;
-        font-family: sans-serif;
-        font-size: 14px;
-        padding: 8px 18px;
-        border-radius: 20px;
-        z-index: 200;
-        opacity: 0;
-        transition: opacity 0.3s;
-        pointer-events: none;
-        white-space: nowrap;
-      }
-      #toast.show { opacity: 1; }
-    </style>
-  </head>
-  <body>
+        var right = new THREE.Vector3();
+        right.crossVectors(fwd, new THREE.Vector3(0,1,0)).normalize();
 
-    <!-- â”€â”€ JOYSTICK â”€â”€ -->
-    <div id="joystick-zone">
-      <div class="joy-base" id="joy-base">
-        <div class="joy-thumb" id="joy-thumb"></div>
-      </div>
+        this.el.object3D.position.addScaledVector(fwd,  -ny * SPEED);
+        this.el.object3D.position.addScaledVector(right,  nx * SPEED);
+      }
+    });
+  </script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { overflow: hidden; }
+
+    #joy-zone {
+      position: fixed; bottom: 28px; left: 20px;
+      width: 120px; height: 120px;
+      z-index: 9999; touch-action: none;
+    }
+    .joy-base {
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255,255,255,0.13);
+      border: 2px solid rgba(255,255,255,0.4);
+      position: relative;
+    }
+    .joy-thumb {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255,255,255,0.55);
+      border: 2px solid rgba(255,255,255,0.9);
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+    #btn-portal {
+      position: fixed; bottom: 28px; right: 20px;
+      width: 76px; height: 76px; border-radius: 50%;
+      background: rgba(178,143,80,0.25);
+      border: 2px solid rgba(178,143,80,0.9);
+      color: #fff; font-family: sans-serif;
+      font-size: 11px; font-weight: bold;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; line-height: 1.3;
+      z-index: 9999; touch-action: manipulation; user-select: none;
+    }
+    #btn-portal:active { background: rgba(178,143,80,0.55); }
+
+    #crosshair {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none; z-index: 9998;
+    }
+    #toast {
+      position: fixed; bottom: 160px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.65); color: #fff;
+      font-family: sans-serif; font-size: 14px;
+      padding: 8px 18px; border-radius: 20px;
+      z-index: 9999; opacity: 0; transition: opacity 0.3s;
+      pointer-events: none; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- JOYSTICK -->
+  <div id="joy-zone">
+    <div class="joy-base" id="joy-base">
+      <div class="joy-thumb" id="joy-thumb"></div>
     </div>
+  </div>
 
-    <!-- â”€â”€ BOTÃ“N INTERACTUAR â”€â”€ -->
-    <div id="btn-interact">ENTRAR<br>PORTAL</div>
+  <!-- BOTÓN PORTAL -->
+  <div id="btn-portal">ENTRAR<br>PORTAL</div>
 
-    <!-- â”€â”€ CROSSHAIR â”€â”€ -->
-    <div id="crosshair">
-      <svg width="34" height="34" viewBox="0 0 34 34">
-        <circle cx="17" cy="17" r="13" fill="none" stroke="white" stroke-width="1.5" opacity="0.75"/>
-        <line x1="17" y1="4"  x2="17" y2="11" stroke="white" stroke-width="1.5" opacity="0.75"/>
-        <line x1="17" y1="23" x2="17" y2="30" stroke="white" stroke-width="1.5" opacity="0.75"/>
-        <line x1="4"  y1="17" x2="11" y2="17" stroke="white" stroke-width="1.5" opacity="0.75"/>
-        <line x1="23" y1="17" x2="30" y2="17" stroke="white" stroke-width="1.5" opacity="0.75"/>
-        <circle cx="17" cy="17" r="2" fill="white" opacity="0.9"/>
-      </svg>
-    </div>
+  <!-- CROSSHAIR -->
+  <div id="crosshair">
+    <svg width="34" height="34" viewBox="0 0 34 34">
+      <circle cx="17" cy="17" r="13" fill="none" stroke="white" stroke-width="1.5" opacity="0.75"/>
+      <line x1="17" y1="4"  x2="17" y2="11" stroke="white" stroke-width="1.5" opacity="0.75"/>
+      <line x1="17" y1="23" x2="17" y2="30" stroke="white" stroke-width="1.5" opacity="0.75"/>
+      <line x1="4"  y1="17" x2="11" y2="17" stroke="white" stroke-width="1.5" opacity="0.75"/>
+      <line x1="23" y1="17" x2="30" y2="17" stroke="white" stroke-width="1.5" opacity="0.75"/>
+      <circle cx="17" cy="17" r="2" fill="white" opacity="0.9"/>
+    </svg>
+  </div>
 
-    <!-- â”€â”€ TOAST â”€â”€ -->
-    <div id="toast"></div>
+  <!-- TOAST -->
+  <div id="toast"></div>
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-    <!--                ESCENA A-FRAME              -->
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-    <a-scene vr-mode-ui="enabled: true">
+  <!-- ══════════ ESCENA A-FRAME ══════════ -->
+  <a-scene vr-mode-ui="enabled: true">
 
-      <!-- Modelo backrooms -->
-      <a-gltf-model src="backrooms_vr.glb" scale="1.25 1.25 1.25" position="0 0 0"></a-gltf-model>
+    <a-gltf-model src="backrooms_vr.glb" scale="1.25 1.25 1.25" position="0 0 0"></a-gltf-model>
 
-      <!-- Primitivas -->
-      <a-plane width="50" height="50"
-               material="color: #ba9652"
-               rotation="-90 0 0"
-               geometry="height: 1000; width: 1000"
-               position="0 -4.344 0"></a-plane>
+    <a-plane material="color: #ba9652" rotation="-90 0 0"
+             geometry="height: 1000; width: 1000" position="0 -4.344 0"></a-plane>
 
-      <a-sky material="color: #b28f50"></a-sky>
+    <a-sky material="color: #b28f50"></a-sky>
 
-      <!-- Sonido -->
-      <a-sound src="warm-nights.mp3" autoplay="true"
-               position="-38.38629 7.52826 6.26842"
-               sound="loop: true; volume: 20"></a-sound>
+    <a-sound src="warm-nights.mp3" autoplay="true"
+             position="-38.38629 7.52826 6.26842"
+             sound="loop: true; volume: 20"></a-sound>
 
-      <!-- â”€â”€ PORTALES â”€â”€ -->
-      <a-link id="miEnlace1"
-              href="https://carlatienzam-byte.github.io/EPE-Alberto_Santin-Vera/"
-              title="Sala Gasolinera"
-              position="6.4927 0.94772 6.76992"
-              scale="0.5 0.5 0.5"
-              geometry="primitive: circle; segments: 64"
-              material="shader: portal; side: double; previewDistance: 7.5"
-              rotation="-2.175670862578057 -84.75516088305645 0"
-              class="portal"
-              data-url="https://carlatienzam-byte.github.io/EPE-Alberto_Santin-Vera/">
-        <a-entity text="align: center; color: white; font: kelsonsans; value: Sala Gasolinera; width: 5"
-                  position="0 1.5 0" rotation="0 180 0"></a-entity>
-      </a-link>
+    <!-- PORTALES -->
+    <a-link id="miEnlace1"
+            href="https://carlatienzam-byte.github.io/EPE-Alberto_Santin-Vera/"
+            title="Sala Gasolinera"
+            position="6.4927 0.94772 6.76992" scale="0.5 0.5 0.5"
+            geometry="primitive: circle; segments: 64"
+            material="shader: portal; side: double; previewDistance: 7.5"
+            rotation="-2.175670862578057 -84.75516088305645 0"
+            class="portal" data-url="https://carlatienzam-byte.github.io/EPE-Alberto_Santin-Vera/">
+      <a-entity text="align: center; color: white; font: kelsonsans; value: Sala Gasolinera; width: 5"
+                position="0 1.5 0" rotation="0 180 0"></a-entity>
+    </a-link>
 
-      <a-link id="miEnlace2"
-              href="https://carlatienzam-byte.github.io/EPE-Carmen-Lara-Gomez/"
-              title="Sala Japanese Period"
-              position="-42.05693 1.3171 -4.44459"
-              scale="0.5 0.5 0.5"
-              geometry="primitive: circle; segments: 64"
-              material="shader: portal; side: double; previewDistance: 7.5"
-              rotation="0 -176.79999999999998 0"
-              class="portal"
-              data-url="https://carlatienzam-byte.github.io/EPE-Carmen-Lara-Gomez/">
-        <a-entity text="align: center; color: white; font: kelsonsans; value: Sala Japanese Period; width: 5"
-                  position="0 1.5 0" rotation="0 180 0"></a-entity>
-      </a-link>
+    <a-link id="miEnlace2"
+            href="https://carlatienzam-byte.github.io/EPE-Carmen-Lara-Gomez/"
+            title="Sala Japanese Period"
+            position="-42.05693 1.3171 -4.44459" scale="0.5 0.5 0.5"
+            geometry="primitive: circle; segments: 64"
+            material="shader: portal; side: double; previewDistance: 7.5"
+            rotation="0 -176.79999999999998 0"
+            class="portal" data-url="https://carlatienzam-byte.github.io/EPE-Carmen-Lara-Gomez/">
+      <a-entity text="align: center; color: white; font: kelsonsans; value: Sala Japanese Period; width: 5"
+                position="0 1.5 0" rotation="0 180 0"></a-entity>
+    </a-link>
 
-      <a-link id="miEnlace3"
-              href="https://carlatienzam-byte.github.io/EPE-Alejandra-Henche-de-Lucas/"
-              title="Strange World"
-              position="-54.32779 1.14831 8.06231"
-              scale="0.5 0.5 0.5"
-              geometry="primitive: circle; segments: 64"
-              material="shader: portal; side: double; previewDistance: 7.5"
-              rotation="-1.7723184711696804 5 0"
-              class="portal"
-              data-url="https://carlatienzam-byte.github.io/EPE-Alejandra-Henche-de-Lucas/">
-        <a-entity text="align: center; color: white; font: kelsonsans; value: Strange World; width: 5"
-                  position="0 1.5 0" rotation="0 180 0"></a-entity>
-      </a-link>
+    <a-link id="miEnlace3"
+            href="https://carlatienzam-byte.github.io/EPE-Alejandra-Henche-de-Lucas/"
+            title="Strange World"
+            position="-54.32779 1.14831 8.06231" scale="0.5 0.5 0.5"
+            geometry="primitive: circle; segments: 64"
+            material="shader: portal; side: double; previewDistance: 7.5"
+            rotation="-1.7723184711696804 5 0"
+            class="portal" data-url="https://carlatienzam-byte.github.io/EPE-Alejandra-Henche-de-Lucas/">
+      <a-entity text="align: center; color: white; font: kelsonsans; value: Strange World; width: 5"
+                position="0 1.5 0" rotation="0 180 0"></a-entity>
+    </a-link>
 
-      <a-link id="miEnlace4"
-              href="https://carlatienzam-byte.github.io/EPE-Laura-Sofia-Aguirre/"
-              title="The Simpsons"
-              position="-53.73499 1.76586 -4.54693"
-              scale="0.5 0.5 0.5"
-              geometry="primitive: circle; segments: 64"
-              material="shader: portal; side: double; previewDistance: 7.5"
-              rotation="0 179.9 0"
-              class="portal"
-              data-url="https://carlatienzam-byte.github.io/EPE-Laura-Sofia-Aguirre/">
-        <a-entity text="align: center; color: white; font: kelsonsans; value: The Simpsons; width: 5"
-                  position="0 1.5 0" rotation="0 180 0"></a-entity>
-      </a-link>
+    <a-link id="miEnlace4"
+            href="https://carlatienzam-byte.github.io/EPE-Laura-Sofia-Aguirre/"
+            title="The Simpsons"
+            position="-53.73499 1.76586 -4.54693" scale="0.5 0.5 0.5"
+            geometry="primitive: circle; segments: 64"
+            material="shader: portal; side: double; previewDistance: 7.5"
+            rotation="0 179.9 0"
+            class="portal" data-url="https://carlatienzam-byte.github.io/EPE-Laura-Sofia-Aguirre/">
+      <a-entity text="align: center; color: white; font: kelsonsans; value: The Simpsons; width: 5"
+                position="0 1.5 0" rotation="0 180 0"></a-entity>
+    </a-link>
 
-      <a-link id="miEnlace5"
-              href="https://carlatienzam-byte.github.io/EPE-Pilar-Montalvo-Velasco/"
-              title="Adventure Time"
-              position="-79.05526 1.66112 18.02414"
-              scale="0.5 0.5 0.5"
-              geometry="primitive: circle; segments: 64"
-              material="shader: portal; side: double; previewDistance: 7.5"
-              rotation="0 360 0"
-              class="portal"
-              data-url="https://carlatienzam-byte.github.io/EPE-Pilar-Montalvo-Velasco/">
-        <a-entity text="align: center; color: white; font: kelsonsans; value: Adventure Time; width: 5"
-                  position="0 1.5 0" rotation="0 180 0"></a-entity>
-      </a-link>
+    <a-link id="miEnlace5"
+            href="https://carlatienzam-byte.github.io/EPE-Pilar-Montalvo-Velasco/"
+            title="Adventure Time"
+            position="-79.05526 1.66112 18.02414" scale="0.5 0.5 0.5"
+            geometry="primitive: circle; segments: 64"
+            material="shader: portal; side: double; previewDistance: 7.5"
+            rotation="0 360 0"
+            class="portal" data-url="https://carlatienzam-byte.github.io/EPE-Pilar-Montalvo-Velasco/">
+      <a-entity text="align: center; color: white; font: kelsonsans; value: Adventure Time; width: 5"
+                position="0 1.5 0" rotation="0 180 0"></a-entity>
+    </a-link>
 
-      <!-- â”€â”€ CÃMARA con look-controls tÃ¡ctil â”€â”€ -->
-      <!-- rig en y=0; userHeight:0 evita que a-camera sume 1.6 m extra -->
-      <a-entity id="rig" position="0 0 0" mobile-movement>
-        <a-camera
-          id="camera"
-          camera="userHeight: 1.6"
-          look-controls="touchEnabled: true; magicWindowTrackingEnabled: false; pointerLockEnabled: false"
-          wasd-controls="enabled: false">
-          <a-cursor
-            color="#b28f50"
-            fuse="false"
-            raycaster="objects: .portal">
-          </a-cursor>
-        </a-camera>
-      </a-entity>
+    <!--
+      CÁMARA:
+      - El rig NO tiene altura (y=0)
+      - a-camera tiene userHeight:0 para no añadir los 1.6m automáticos
+      - position="0 1.6 0" en la propia cámara fija la altura manualmente
+      - mobile-movement en el rig, registrado ANTES del <a-scene>
+    -->
+    <a-entity id="rig" position="0 0 0" mobile-movement>
+      <a-camera id="camera"
+                position="0 1.6 0"
+                camera="userHeight: 0"
+                look-controls="touchEnabled: true; magicWindowTrackingEnabled: false; pointerLockEnabled: false"
+                wasd-controls="enabled: false">
+        <a-cursor color="#b28f50" fuse="false" raycaster="objects: .portal"></a-cursor>
+      </a-camera>
+    </a-entity>
 
-    </a-scene>
+  </a-scene>
 
-    <script>
-    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       COMPONENTE RAYCASTER CENTRAL (mÃ³vil)
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-    AFRAME.registerComponent('portal-raycaster', {
-      init: function () {
-        this.raycaster = new THREE.Raycaster();
-      },
-      getPortalAtCenter: function () {
-        const camEl = document.getElementById('camera');
-        if (!camEl) return null;
-        const cam = camEl.getObject3D('camera');
-        if (!cam) return null;
+  <script>
+    /* ── JOYSTICK ── */
+    var joyBase  = document.getElementById('joy-base');
+    var joyThumb = document.getElementById('joy-thumb');
 
-        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), cam);
-
-        const portals = document.querySelectorAll('.portal');
-        const meshes = [];
-        portals.forEach(el => {
-          el.object3D.traverse(o => { if (o.isMesh) meshes.push(o); });
-        });
-
-        const hits = this.raycaster.intersectObjects(meshes, true);
-        if (hits.length === 0) return null;
-
-        let obj = hits[0].object;
-        for (let i = 0; i < 6; i++) {
-          if (obj.el && obj.el.dataset.url) return obj.el;
-          if (!obj.parent) break;
-          obj = obj.parent;
-        }
-        return null;
-      }
-    });
-
-    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       TOAST
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
-      clearTimeout(t._tid);
-      t._tid = setTimeout(() => t.classList.remove('show'), 2500);
-    }
-
-    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       NAVEGACIÃ“N AL PORTAL
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-    function activatePortal(el) {
-      if (!el) { showToast('Apunta a un portal'); return; }
-      const url  = el.dataset.url;
-      const name = el.getAttribute('title') || 'Portal';
-      showToast('ðŸšª Entrando: ' + name);
-      setTimeout(() => { window.location.href = url; }, 600);
-    }
-
-    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       BOTÃ“N INTERACTUAR
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-    const scene = document.querySelector('a-scene');
-
-    function onInteract() {
-      const comp = scene.components['portal-raycaster'];
-      if (!comp) return;
-      activatePortal(comp.getPortalAtCenter());
-    }
-
-    const btn = document.getElementById('btn-interact');
-    btn.addEventListener('touchstart', e => { e.preventDefault(); onInteract(); }, { passive: false });
-    btn.addEventListener('click', onInteract);
-
-    /* Registrar portal-raycaster cuando la escena cargue */
-    scene.addEventListener('loaded', () => {
-      scene.setAttribute('portal-raycaster', '');
-    });
-
-    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       CLICK EN PORTALES (desktop / gaze)
-       â€” mantiene compatibilidad original â€”
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-    ['miEnlace1','miEnlace2','miEnlace3','miEnlace4','miEnlace5'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.addEventListener('click', () => {
-          window.location.href = el.dataset.url;
-        });
-      }
-    });
-
-    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       JOYSTICK VIRTUAL
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-    const joyBase  = document.getElementById('joy-base');
-    const joyThumb = document.getElementById('joy-thumb');
-    const JOY_R    = 37;
-    const SPEED    = 0.04;
-
-    let joyActive = false;
-    let joyDx = 0, joyDy = 0;
-
-    function joyCenter(touch) {
-      const r = joyBase.getBoundingClientRect();
+    function joyPos(touch) {
+      var r = joyBase.getBoundingClientRect();
       return {
         x: touch.clientX - r.left - r.width  / 2,
         y: touch.clientY - r.top  - r.height / 2
       };
     }
 
-    joyBase.addEventListener('touchstart', e => {
-      e.preventDefault();
-      joyActive = true;
+    joyBase.addEventListener('touchstart', function(e) {
+      e.preventDefault(); joyActive = true;
     }, { passive: false });
 
-    joyBase.addEventListener('touchmove', e => {
+    joyBase.addEventListener('touchmove', function(e) {
       e.preventDefault();
       if (!joyActive) return;
-      const p = joyCenter(e.touches[0]);
-      const d = Math.sqrt(p.x * p.x + p.y * p.y);
-      const c = d > JOY_R ? JOY_R / d : 1;
+      var p = joyPos(e.touches[0]);
+      var d = Math.sqrt(p.x*p.x + p.y*p.y);
+      var c = d > JOY_R ? JOY_R / d : 1;
       joyDx = p.x * c;
       joyDy = p.y * c;
       joyThumb.style.transform =
-        `translate(calc(-50% + ${joyDx}px), calc(-50% + ${joyDy}px))`;
+        'translate(calc(-50% + '+joyDx+'px), calc(-50% + '+joyDy+'px))';
     }, { passive: false });
 
-    joyBase.addEventListener('touchend', e => {
+    joyBase.addEventListener('touchend', function(e) {
       e.preventDefault();
-      joyActive = false;
-      joyDx = joyDy = 0;
+      joyActive = false; joyDx = 0; joyDy = 0;
       joyThumb.style.transform = 'translate(-50%,-50%)';
     }, { passive: false });
 
-    /* â”€â”€ Componente de movimiento (tick de A-Frame) â”€â”€ */
-    AFRAME.registerComponent('mobile-movement', {
-      tick: function () {
-        if (!joyActive) return;
-        const nx = joyDx / JOY_R;
-        const ny = joyDy / JOY_R;
-        if (Math.abs(nx) < 0.05 && Math.abs(ny) < 0.05) return;
+    /* ── TOAST ── */
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._tid);
+      t._tid = setTimeout(function(){ t.classList.remove('show'); }, 2500);
+    }
 
-        const camEl = document.getElementById('camera');
-        if (!camEl) return;
+    /* ── PORTAL por raycaster central ── */
+    function getPortalAtCenter() {
+      var camEl = document.getElementById('camera');
+      if (!camEl) return null;
+      var cam = camEl.getObject3D('camera');
+      if (!cam) return null;
 
-        const fwd = new THREE.Vector3();
-        camEl.object3D.getWorldDirection(fwd);
-        fwd.y = 0; fwd.normalize();
+      var rc = new THREE.Raycaster();
+      rc.setFromCamera(new THREE.Vector2(0,0), cam);
 
-        const right = new THREE.Vector3();
-        right.crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+      var meshes = [];
+      document.querySelectorAll('.portal').forEach(function(el) {
+        el.object3D.traverse(function(o){ if (o.isMesh) meshes.push(o); });
+      });
 
-        this.el.object3D.position.addScaledVector(fwd,  -ny * SPEED);
-        this.el.object3D.position.addScaledVector(right,  nx * SPEED);
+      var hits = rc.intersectObjects(meshes, true);
+      if (!hits.length) return null;
+
+      var obj = hits[0].object;
+      for (var i = 0; i < 8; i++) {
+        if (obj.el && obj.el.dataset && obj.el.dataset.url) return obj.el;
+        if (!obj.parent) break;
+        obj = obj.parent;
       }
-    });
-    </script>
+      return null;
+    }
 
-  </body>
+    function activatePortal(el) {
+      if (!el) { showToast('Apunta a un portal'); return; }
+      showToast('Entrando: ' + (el.getAttribute('title') || 'Portal'));
+      setTimeout(function(){ window.location.href = el.dataset.url; }, 600);
+    }
+
+    /* ── BOTÓN ── */
+    var btnPortal = document.getElementById('btn-portal');
+    btnPortal.addEventListener('touchstart', function(e) {
+      e.preventDefault(); activatePortal(getPortalAtCenter());
+    }, { passive: false });
+    btnPortal.addEventListener('click', function() {
+      activatePortal(getPortalAtCenter());
+    });
+
+    /* ── CLICK EN PORTALES (desktop) ── */
+    ['miEnlace1','miEnlace2','miEnlace3','miEnlace4','miEnlace5'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('click', function() {
+        window.location.href = el.dataset.url;
+      });
+    });
+  </script>
+
+</body>
 </html>
