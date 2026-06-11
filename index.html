@@ -9,7 +9,7 @@
   <script>
     /* Variables del joystick accesibles desde el componente */
     var JOY_R    = 37;
-    var SPEED    = 0.055;
+    var SPEED    = 0.1;
     var joyActive = false;
     var joyDx = 0, joyDy = 0;
 
@@ -31,10 +31,10 @@
         fwd.normalize();
 
         var right = new THREE.Vector3();
-        right.crossVectors(new THREE.Vector3(0,1,0), fwd).normalize();
+        right.crossVectors(fwd, new THREE.Vector3(0,1,0)).normalize();
 
         this.el.object3D.position.addScaledVector(fwd,  -ny * SPEED);
-        this.el.object3D.position.addScaledVector(right, -nx * SPEED);
+        this.el.object3D.position.addScaledVector(right,  nx * SPEED);
       }
     });
   </script>
@@ -80,7 +80,14 @@
       transform: translate(-50%,-50%);
       pointer-events: none; z-index: 9998;
     }
-    #toast {
+    #debug {
+      position: fixed; top: 10px; right: 10px;
+      background: rgba(0,0,0,0.6); color: #0f0;
+      font-family: monospace; font-size: 13px;
+      padding: 8px 12px; border-radius: 8px;
+      z-index: 9999; pointer-events: none;
+      line-height: 1.6;
+    }
       position: fixed; bottom: 160px; left: 50%;
       transform: translateX(-50%);
       background: rgba(0,0,0,0.65); color: #fff;
@@ -115,6 +122,9 @@
       <circle cx="17" cy="17" r="2" fill="white" opacity="0.9"/>
     </svg>
   </div>
+
+  <!-- DEBUG -->
+  <div id="debug">nx: 0.00<br>ny: 0.00</div>
 
   <!-- TOAST -->
   <div id="toast"></div>
@@ -238,6 +248,8 @@
       var c = d > JOY_R ? JOY_R / d : 1;
       joyDx = p.x * c;
       joyDy = p.y * c;
+      document.getElementById('debug').innerHTML =
+        'nx: '+(joyDx/JOY_R).toFixed(2)+'<br>ny: '+(joyDy/JOY_R).toFixed(2);
       joyThumb.style.transform =
         'translate(calc(-50% + '+joyDx+'px), calc(-50% + '+joyDy+'px))';
     }, { passive: false });
@@ -309,4 +321,4 @@
   </script>
 
 </body>
-</html>>
+</html>
