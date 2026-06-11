@@ -36,8 +36,8 @@
 
         var pos = this.el.object3D.position;
         /* adelante/atrás */
-        pos.x += sinA * (-ny) * SPEED;
-        pos.z += cosA * (-ny) * SPEED;
+        pos.x += sinA * ny * SPEED;
+        pos.z += cosA * ny * SPEED;
         /* derecha/izquierda */
         pos.x += cosA * nx * SPEED;
         pos.z += (-sinA) * nx * SPEED;
